@@ -92,9 +92,29 @@ def test_no_collision_when_moving_away():
     da.resolveCollision(c1, c2)
     
     assert c1.getDir() == original_dir1, "正在遠離的圓形不應受到碰撞衝量影響"
+
+def test_render_gif():
+    """測試生成 3D GIF 動畫"""
+    size = (1000.0, 1000.0, 1000.0)
+    da = _dotarena.DotArena(size, 0.0, 0.5) # friction = 0.5
+    
+    # 參數：id, radius, (x,y,z) pos, (vx,vy,vz) dir
+    # 放置幾個不同深度的圓球，讓它們互相碰撞
+    da.add_circle(1, 50.0, (-200.0, 0.0, 0.0), (200.0, 0.0, 0.0))    # 從左向右
+    da.add_circle(2, 70.0, (200.0, 50.0, 100.0), (-150.0, 0.0, -50.0)) # 從右向左，稍微靠後
+    da.add_circle(3, 40.0, (0.0, -200.0, 50.0), (0.0, 200.0, 0.0))   # 從下向上
+    da.add_circle(4, 30.0, (0.0, 200.0, -50.0), (0.0, -150.0, 50.0))  # 從上向下
+    
+    try:
+        # 生成 100 幀，每幀 dt=0.05
+        da.renderToGif("test_simulation.gif", 100, 0.05, 800, 800)
+        print("\n成功生成 test_simulation.gif 動畫！")
+    except Exception as e:
+        pytest.fail(f"renderToGif 執行時崩潰: {e}")
     
 if __name__ == "__main__":
     # 讓你可以直接用 python test_dotarena.py 執行
     test_dotarena_init()
     test_add_circle()
+    test_render_gif()
     print("所有手動測試通過！")
