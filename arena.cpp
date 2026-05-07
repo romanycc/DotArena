@@ -1,4 +1,4 @@
 #include "arena.hpp"
 using namespace std;
-Arena::Arena(std::tuple<double, double, double> s, double sr, double fc) 
-    : size(s), shrink_rate(sr), friction_coefficient(fc) {}
+Arena::Arena(std::tuple<double, double, double> s, double fc) 
+    : size(s), friction_coefficient(fc) {}

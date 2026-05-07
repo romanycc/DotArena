@@ -1,0 +1,18 @@
+{
+  "arena": {
+    "size_x": 1000.0,
+    "size_y": 1000.0,
+    "size_z": 1000.0,
+    "friction": 0.1
+  },
+  "simulation": {
+    "num_circles": 1150,
+    "frames": 200,
+    "dt": 0.05
+  },
+  "output": {
+    "filename": "random_simulation.gif",
+    "width": 800,
+    "height": 800
+  }
+}
