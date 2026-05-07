@@ -8,7 +8,7 @@ def test_dotarena_init():
     friction = 0.1
     
     try:
-        da = _dotarena.DotArena(size, shrink_rate, friction)
+        da = _dotarena.DotArena(size, friction)
         print("\nDotArena 初始化成功！")
     except Exception as e:
         pytest.fail(f"DotArena 初始化失敗: {e}")
@@ -16,7 +16,7 @@ def test_dotarena_init():
 def test_add_circle():
     # 測試添加圓形
     size = (500.0, 500.0, 0.0)
-    da = _dotarena.DotArena(size, 1.0, 0.0)
+    da = _dotarena.DotArena(size, 0.0)
     
     # 參數：id (int), r (double), pos (tuple), dir (tuple)
     try:
@@ -28,7 +28,7 @@ def test_add_circle():
 def test_collision_detection():
     """測試碰撞偵測邏輯"""
     size = (100.0, 100.0, 100.0)
-    da = _dotarena.DotArena(size, 1.0, 0.0)
+    da = _dotarena.DotArena(size, 0.0)
     
     # 建立兩個重疊的圓 (半徑各為 5，距離只有 8 < 10)
     c1 = _dotarena.Circle(1, 5.0, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0))
@@ -43,7 +43,7 @@ def test_collision_detection():
 def test_resolve_collision():
     """測試碰撞後的物理反應（方向/速度改變）"""
     size = (100.0, 100.0, 100.0)
-    da = _dotarena.DotArena(size, 1.0, 0.0)
+    da = _dotarena.DotArena(size, 0.0)
     
     # 準備兩個迎面對撞的圓
     # c1 向右 (1,0,0), c2 向左 (-1,0,0)
@@ -66,7 +66,7 @@ def test_resolve_collision():
 def test_check_collision_loop():
     """測試 DotArena 內部的批量碰撞檢查"""
     size = (100.0, 100.0, 100.0)
-    da = _dotarena.DotArena(size, 1.0, 0.0)
+    da = _dotarena.DotArena(size, 0.0)
     
     # 加入一堆擠在一起的圓形
     da.add_circle(1, 10.0, (0.0, 0.0, 0.0), (1.0, 0.0, 0.0))
@@ -82,7 +82,7 @@ def test_check_collision_loop():
 def test_no_collision_when_moving_away():
     """測試如果兩圓已經在遠離，不應觸發衝量(Impulse)"""
     size = (100.0, 100.0, 100.0)
-    da = _dotarena.DotArena(size, 1.0, 0.0)
+    da = _dotarena.DotArena(size, 0.0)
     
     # 雖然位置重疊，但 c1 往左，c2 往右 (正在分離)
     c1 = _dotarena.Circle(1, 10.0, (0.0, 0.0, 0.0), (-1.0, 0.0, 0.0))
@@ -96,7 +96,7 @@ def test_no_collision_when_moving_away():
 def test_render_gif():
     """測試生成 3D GIF 動畫"""
     size = (1000.0, 1000.0, 1000.0)
-    da = _dotarena.DotArena(size, 0.0, 0.5) # friction = 0.5
+    da = _dotarena.DotArena(size, 0.5) # friction = 0.5
     
     # 參數：id, radius, (x,y,z) pos, (vx,vy,vz) dir
     # 放置幾個不同深度的圓球，讓它們互相碰撞
@@ -106,9 +106,11 @@ def test_render_gif():
     da.add_circle(4, 30.0, (0.0, 200.0, -50.0), (0.0, -150.0, 50.0))  # 從上向下
     
     try:
-        # 生成 100 幀，每幀 dt=0.05
-        da.renderToGif("test_simulation.gif", 100, 0.05, 800, 800)
-        print("\n成功生成 test_simulation.gif 動畫！")
+        # 執行 GIF 渲染
+        print("\nRendering frames for test GIF...")
+        renderer = _dotarena.Renderer(800, 800)
+        renderer.renderToGif(da, "test_simulation.gif", frames=100, dt=0.05)
+        print("成功生成 test_simulation.gif 動畫！")
     except Exception as e:
         pytest.fail(f"renderToGif 執行時崩潰: {e}")
     
