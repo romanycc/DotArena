@@ -100,7 +100,70 @@ public:
     }
   }
 
-  void checkCollisionGrid() {
+  void checkCollisionGrid1D() {
+    double sx = get<0>(arena.getSize()) / 2.0;
+    double sy = get<1>(arena.getSize()) / 2.0;
+    double sz = get<2>(arena.getSize()) / 2.0;
+
+    double cell_size = 50.0; // 2 * max_radius
+    int grid_w = std::max(1, (int)std::ceil((2 * sx) / cell_size));
+    int grid_h = std::max(1, (int)std::ceil((2 * sy) / cell_size));
+    int grid_d = std::max(1, (int)std::ceil((2 * sz) / cell_size));
+
+    int total_cells = grid_w * grid_h * grid_d;
+    if ((int)grid_head.size() != total_cells) {
+      grid_head.resize(total_cells);
+    }
+    grid_head.assign(total_cells, -1);
+
+    if (circle_next.size() < circles.size()) {
+      circle_next.resize(circles.size());
+    }
+
+    auto getCellIndex = [&](Vector3 pos) -> int {
+      int cx = std::clamp((int)((get<0>(pos) + sx) / cell_size), 0, grid_w - 1);
+      int cy = std::clamp((int)((get<1>(pos) + sy) / cell_size), 0, grid_h - 1);
+      int cz = std::clamp((int)((get<2>(pos) + sz) / cell_size), 0, grid_d - 1);
+      return cz * grid_w * grid_h + cy * grid_w + cx;
+    };
+
+    // Phase 1: Scatter
+    for (size_t i = 0; i < circles.size(); ++i) {
+      int cell_idx = getCellIndex(circles[i].getPos());
+      circle_next[i] = grid_head[cell_idx];
+      grid_head[cell_idx] = i;
+    }
+
+    // Phase 2: Gather
+    for (size_t i = 0; i < circles.size(); ++i) {
+      Vector3 pos = circles[i].getPos();
+      int cx = std::clamp((int)((get<0>(pos) + sx) / cell_size), 0, grid_w - 1);
+      int cy = std::clamp((int)((get<1>(pos) + sy) / cell_size), 0, grid_h - 1);
+      int cz = std::clamp((int)((get<2>(pos) + sz) / cell_size), 0, grid_d - 1);
+
+      for (int dz = -1; dz <= 1; ++dz) {
+        for (int dy = -1; dy <= 1; ++dy) {
+          for (int dx = -1; dx <= 1; ++dx) {
+            int nx = cx + dx, ny = cy + dy, nz = cz + dz;
+            if (nx >= 0 && nx < grid_w && ny >= 0 && ny < grid_h && nz >= 0 && nz < grid_d) {
+              int neighbor_idx = nz * grid_w * grid_h + ny * grid_w + nx;
+              int j = grid_head[neighbor_idx];
+              while (j != -1) {
+                if (i < (size_t)j) {
+                  if (isCollision(circles[i], circles[j])) {
+                    resolveCollision(circles[i], circles[j]);
+                  }
+                }
+                j = circle_next[j];
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  void checkCollisionGrid2D() {
     double sx = get<0>(arena.getSize()) / 2.0;
     double sy = get<1>(arena.getSize()) / 2.0;
     double sz = get<2>(arena.getSize()) / 2.0;
@@ -152,7 +215,7 @@ public:
   }
 
   // dt : delta time
-  void step(double dt, bool use_grid = true) {
+  void step(double dt, int method = 2) {
     // 1. Update positions based on velocity and apply friction
     double friction = arena.getFriction();
     for (auto &circle : circles) {
@@ -207,8 +270,10 @@ public:
     }
 
     // 2. Resolve collisions
-    if (use_grid) {
-      checkCollisionGrid();
+    if (method == 2) {
+      checkCollisionGrid1D();
+    } else if (method == 1) {
+      checkCollisionGrid2D();
     } else {
       checkCollisionBruteForce();
     }
@@ -217,6 +282,8 @@ public:
 private:
   std::vector<Circle> circles;
   Arena arena;
+  std::vector<int> grid_head;
+  std::vector<int> circle_next;
 };
 PYBIND11_MODULE(_dotarena, m) {
   pybind11::class_<DotArena>(m, "DotArena")
@@ -226,8 +293,9 @@ PYBIND11_MODULE(_dotarena, m) {
       .def("isCollision", &DotArena::isCollision)
       .def("resolveCollision", &DotArena::resolveCollision)
       .def("checkCollisionBruteForce", &DotArena::checkCollisionBruteForce)
-      .def("checkCollisionGrid", &DotArena::checkCollisionGrid)
-      .def("step", &DotArena::step, pybind11::arg("dt"), pybind11::arg("use_grid") = true);
+      .def("checkCollisionGrid1D", &DotArena::checkCollisionGrid1D)
+      .def("checkCollisionGrid2D", &DotArena::checkCollisionGrid2D)
+      .def("step", &DotArena::step, pybind11::arg("dt"), pybind11::arg("method") = 2);
 
   pybind11::class_<Renderer>(m, "Renderer")
       .def(pybind11::init<int, int>(), pybind11::arg("width") = 800,

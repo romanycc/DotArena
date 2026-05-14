@@ -75,9 +75,9 @@ def test_check_collision_loop():
     
     # 只要執行不崩潰且能跑完循環即通過基本測試
     try:
-        da.checkCollisionGrid()
+        da.checkCollisionGrid1D()
     except Exception as e:
-        pytest.fail(f"checkCollisionGrid 執行時崩潰: {e}")
+        pytest.fail(f"checkCollisionGrid1D 執行時崩潰: {e}")
 
 def test_no_collision_when_moving_away():
     """測試如果兩圓已經在遠離，不應觸發衝量(Impulse)"""
