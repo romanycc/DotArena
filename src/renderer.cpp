@@ -109,9 +109,14 @@ void Renderer::drawCircles(std::vector<uint8_t>& image, const DotArena& sim, dou
             double ambient = 0.3;
             double intensity = std::min(1.0, ambient + diffuse);
 
-            int r_col = std::min(255, (int)(255 * intensity));
-            int g_col = std::min(255, (int)(100 * intensity));
-            int b_col = std::min(255, (int)(50 * intensity));
+            // Pseudo-random deterministic color per circle based on its index
+            int base_r = (idx * 137 + 100) % 256;
+            int base_g = (idx * 51 + 50) % 256;
+            int base_b = (idx * 271 + 200) % 256;
+
+            int r_col = std::min(255, (int)(base_r * intensity));
+            int g_col = std::min(255, (int)(base_g * intensity));
+            int b_col = std::min(255, (int)(base_b * intensity));
 
             int index = (y * width + x) * 4;
             image[index + 0] = r_col;

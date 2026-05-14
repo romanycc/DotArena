@@ -15,6 +15,34 @@
 using namespace std;
 using Vector3 = std::tuple<double, double, double>;
 
+template <typename T, std::size_t Alignment>
+struct AlignedAllocator {
+    using value_type = T;
+
+    AlignedAllocator() noexcept = default;
+    template <typename U> AlignedAllocator(const AlignedAllocator<U, Alignment>&) noexcept {}
+
+    T* allocate(std::size_t n) {
+        if (n == 0) return nullptr;
+        void* ptr = nullptr;
+        if (posix_memalign(&ptr, Alignment, n * sizeof(T)) != 0) {
+            throw std::bad_alloc();
+        }
+        return static_cast<T*>(ptr);
+    }
+
+    void deallocate(T* p, std::size_t) noexcept {
+        free(p);
+    }
+};
+
+template <typename T, typename U, std::size_t Alignment>
+bool operator==(const AlignedAllocator<T, Alignment>&, const AlignedAllocator<U, Alignment>&) { return true; }
+template <typename T, typename U, std::size_t Alignment>
+bool operator!=(const AlignedAllocator<T, Alignment>&, const AlignedAllocator<U, Alignment>&) { return false; }
+
+using DoubleVector = std::vector<double, AlignedAllocator<double, 64>>;
+
 class DotArena {
 public:
   DotArena(tuple<double, double, double> size, double friction_coefficient)
@@ -36,10 +64,13 @@ public:
   const Arena &getArena() const { return arena; }
   int getNumCircles() const { return num_circles; }
   
-  const std::vector<double>& getPx() const { return px; }
-  const std::vector<double>& getPy() const { return py; }
-  const std::vector<double>& getPz() const { return pz; }
-  const std::vector<double>& getRadius() const { return radius; }
+  const DoubleVector& getPx() const { return px; }
+  const DoubleVector& getPy() const { return py; }
+  const DoubleVector& getPz() const { return pz; }
+  const DoubleVector& getVx() const { return vx; }
+  const DoubleVector& getVy() const { return vy; }
+  const DoubleVector& getVz() const { return vz; }
+  const DoubleVector& getRadius() const { return radius; }
 
   void add_random_circles(int count) {
     std::random_device rd;
@@ -321,9 +352,9 @@ private:
   Arena arena;
   int num_circles;
   std::vector<int> ids;
-  std::vector<double> px, py, pz;
-  std::vector<double> vx, vy, vz;
-  std::vector<double> radius;
+  DoubleVector px, py, pz;
+  DoubleVector vx, vy, vz;
+  DoubleVector radius;
   std::vector<int> grid_head;
   std::vector<int> circle_next;
 };
