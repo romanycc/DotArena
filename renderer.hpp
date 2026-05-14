@@ -6,7 +6,6 @@
 #include <cstdint>
 #include <functional>
 #include "arena.hpp"
-#include "circle.hpp"
 
 using Vector3 = std::tuple<double, double, double>;
 
@@ -15,7 +14,7 @@ public:
     Renderer(int width = 800, int height = 800);
     
     // Generates the GIF by orchestrating the render loop and invoking the physics step callback
-    void renderToGif(const Arena& arena, const std::vector<Circle>& circles, 
+    void renderToGif(const class DotArena& sim, 
                      std::function<void()> step_func, 
                      std::string filename, int frames, double dt);
 
@@ -28,7 +27,7 @@ private:
     void drawLine(std::vector<uint8_t>& image, int x0, int y0, int x1, int y1, uint8_t r, uint8_t g, uint8_t b);
     std::pair<int, int> projectPoint(double x, double y, double z, double camera_z);
     void drawBoundingBox(std::vector<uint8_t>& image, const Arena& arena, double camera_z);
-    void drawCircles(std::vector<uint8_t>& image, const std::vector<Circle>& circles, double camera_z);
+    void drawCircles(std::vector<uint8_t>& image, const class DotArena& sim, double camera_z);
 };
 
 #endif

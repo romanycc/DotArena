@@ -1,6 +1,5 @@
-#include "renderer.hpp"
+#include "dotarena.hpp"
 #include "gif.h"
-#include <algorithm>
 #include <cmath>
 
 Renderer::Renderer(int w, int h) 
@@ -62,24 +61,32 @@ void Renderer::drawBoundingBox(std::vector<uint8_t>& image, const Arena& arena, 
     drawLine(image, p[3].first, p[3].second, p[7].first, p[7].second, br, bg, bb);
 }
 
-void Renderer::drawCircles(std::vector<uint8_t>& image, const std::vector<Circle>& circles, double camera_z) {
-    std::vector<Circle> sorted_circles = circles;
-    std::sort(sorted_circles.begin(), sorted_circles.end(),
-              [](Circle &a, Circle &b) {
-                return std::get<2>(a.getPos()) > std::get<2>(b.getPos());
+void Renderer::drawCircles(std::vector<uint8_t>& image, const DotArena& sim, double camera_z) {
+    int num_circles = sim.getNumCircles();
+    if (num_circles == 0) return;
+
+    const auto& px = sim.getPx();
+    const auto& py = sim.getPy();
+    const auto& pz = sim.getPz();
+    const auto& radius = sim.getRadius();
+
+    std::vector<int> sorted_indices(num_circles);
+    for(int i = 0; i < num_circles; ++i) sorted_indices[i] = i;
+
+    std::sort(sorted_indices.begin(), sorted_indices.end(),
+              [&pz](int a, int b) {
+                return pz[a] > pz[b];
               });
 
-    for (auto &circle : sorted_circles) {
-      Vector3 pos = circle.getPos();
-      double z = std::get<2>(pos);
-
+    for (int idx : sorted_indices) {
+      double z = pz[idx];
       double z_rel = z + camera_z;
       if (z_rel <= 0.1) continue;
       double scale = focal_length / z_rel;
 
-      double cx = std::get<0>(pos) * scale + width / 2.0;
-      double cy = std::get<1>(pos) * scale + height / 2.0;
-      double r = circle.getRadius() * scale;
+      double cx = px[idx] * scale + width / 2.0;
+      double cy = py[idx] * scale + height / 2.0;
+      double r = radius[idx] * scale;
 
       int minX = std::max(0, (int)(cx - r));
       int maxX = std::min(width - 1, (int)(cx + r));
@@ -117,9 +124,10 @@ void Renderer::drawCircles(std::vector<uint8_t>& image, const std::vector<Circle
     }
 }
 
-void Renderer::renderToGif(const Arena& arena, const std::vector<Circle>& circles, 
+void Renderer::renderToGif(const DotArena& sim, 
                            std::function<void()> step_func, 
                            std::string filename, int frames, double dt) {
+    const Arena& arena = sim.getArena();
     int delay = std::max(2, (int)(dt * 100)); // delay in hundredths of a second
     GifWriter g;
     GifBegin(&g, filename.c_str(), width, height, delay);
@@ -134,7 +142,7 @@ void Renderer::renderToGif(const Arena& arena, const std::vector<Circle>& circle
         std::vector<uint8_t> image(width * height * 4, 0); // black background
 
         drawBoundingBox(image, arena, camera_z);
-        drawCircles(image, circles, camera_z);
+        drawCircles(image, sim, camera_z);
 
         GifWriteFrame(&g, image.data(), width, height, delay);
         step_func(); // Advance the simulation!
