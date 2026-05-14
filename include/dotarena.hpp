@@ -22,6 +22,11 @@ struct AlignedAllocator {
     AlignedAllocator() noexcept = default;
     template <typename U> AlignedAllocator(const AlignedAllocator<U, Alignment>&) noexcept {}
 
+    template <typename U>
+    struct rebind {
+        using other = AlignedAllocator<U, Alignment>;
+    };
+
     T* allocate(std::size_t n) {
         if (n == 0) return nullptr;
         void* ptr = nullptr;
@@ -227,7 +232,6 @@ public:
       return cz * grid_w * grid_h + cy * grid_w + cx;
     };
 
-    #pragma omp simd
     for (size_t i = 0; i < (size_t)num_circles; ++i) {
       int cell_idx = getCellIndex(i);
       circle_next[i] = grid_head[cell_idx];
@@ -319,7 +323,6 @@ public:
     double sy = get<1>(arena.getSize()) / 2.0;
     double sz = get<2>(arena.getSize()) / 2.0;
 
-    #pragma omp simd
     for (size_t i = 0; i < (size_t)num_circles; ++i) {
       vx[i] *= frictionFactor;
       vy[i] *= frictionFactor;
