@@ -11,7 +11,7 @@
     "dt": 0.05
   },
   "output": {
-    "filename": "random_simulation.gif",
+    "filename": "gif/random_simulation.gif",
     "width": 800,
     "height": 800
   }

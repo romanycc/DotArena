@@ -40,10 +40,10 @@ def test_render_gif():
     
     renderer = _dotarena.Renderer(200, 200)
     try:
-        renderer.renderToGif(da, "test.gif", 5, 0.1)
-        assert os.path.exists("test.gif")
+        renderer.renderToGif(da, "gif/test.gif", 5, 0.1)
+        assert os.path.exists("gif/test.gif")
     except Exception as e:
         pytest.fail(f"renderToGif 執行失敗: {e}")
     finally:
-        if os.path.exists("test.gif"):
-            os.remove("test.gif")
+        if os.path.exists("gif/test.gif"):
+            os.remove("gif/test.gif")
