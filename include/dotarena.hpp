@@ -8,6 +8,10 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <random>
+
+#if defined(__ARM_NEON)
+#include <arm_neon.h>
+#endif
 using namespace std;
 using Vector3 = std::tuple<double, double, double>;
 
@@ -112,6 +116,49 @@ public:
   }
 
   void checkCollisionBruteForce() {
+#if defined(__ARM_NEON)
+    for (size_t i = 0; i < (size_t)num_circles; ++i) {
+      float64x2_t pxi = vdupq_n_f64(px[i]);
+      float64x2_t pyi = vdupq_n_f64(py[i]);
+      float64x2_t pzi = vdupq_n_f64(pz[i]);
+      float64x2_t ri  = vdupq_n_f64(radius[i]);
+
+      size_t j = i + 1;
+      // Process 2 circles at a time using 128-bit NEON registers
+      for (; j + 1 < (size_t)num_circles; j += 2) {
+        float64x2_t pxj = vld1q_f64(&px[j]);
+        float64x2_t pyj = vld1q_f64(&py[j]);
+        float64x2_t pzj = vld1q_f64(&pz[j]);
+        float64x2_t rj  = vld1q_f64(&radius[j]);
+
+        float64x2_t dx = vsubq_f64(pxi, pxj);
+        float64x2_t dy = vsubq_f64(pyi, pyj);
+        float64x2_t dz = vsubq_f64(pzi, pzj);
+
+        float64x2_t distSq = vmulq_f64(dx, dx);
+        distSq = vfmaq_f64(distSq, dy, dy); // Fused multiply-add
+        distSq = vfmaq_f64(distSq, dz, dz);
+
+        float64x2_t rSum = vaddq_f64(ri, rj);
+        float64x2_t rSumSq = vmulq_f64(rSum, rSum);
+
+        uint64x2_t cmp = vcleq_f64(distSq, rSumSq);
+
+        if (vgetq_lane_u64(cmp, 0)) {
+          resolveCollision(i, j);
+        }
+        if (vgetq_lane_u64(cmp, 1)) {
+          resolveCollision(i, j + 1);
+        }
+      }
+      // Scalar fallback for remainder
+      for (; j < (size_t)num_circles; ++j) {
+        if (isCollision(i, j)) {
+          resolveCollision(i, j);
+        }
+      }
+    }
+#else
     for (size_t i = 0; i < (size_t)num_circles; ++i) {
       for (size_t j = i + 1; j < (size_t)num_circles; ++j) {
         if (isCollision(i, j)) {
@@ -119,6 +166,7 @@ public:
         }
       }
     }
+#endif
   }
 
   void checkCollisionGrid1D() {
@@ -155,10 +203,14 @@ public:
       grid_head[cell_idx] = i;
     }
 
+    int neighbor_buffer[512]; // Stack allocated raw array
+
     for (size_t i = 0; i < (size_t)num_circles; ++i) {
       int cx = std::clamp((int)((px[i] + sx) / cell_size), 0, grid_w - 1);
       int cy = std::clamp((int)((py[i] + sy) / cell_size), 0, grid_h - 1);
       int cz = std::clamp((int)((pz[i] + sz) / cell_size), 0, grid_d - 1);
+
+      size_t buf_size = 0;
 
       for (int dz = -1; dz <= 1; ++dz) {
         for (int dy = -1; dy <= 1; ++dy) {
@@ -169,14 +221,60 @@ public:
               int j = grid_head[neighbor_idx];
               while (j != -1) {
                 if (i < (size_t)j) {
-                  if (isCollision(i, j)) {
-                    resolveCollision(i, j);
-                  }
+                  neighbor_buffer[buf_size++] = j;
+                  if (buf_size >= 512) break; // Safety limit
                 }
                 j = circle_next[j];
               }
             }
           }
+        }
+      }
+
+      size_t k = 0;
+#if defined(__ARM_NEON)
+      float64x2_t pxi = vdupq_n_f64(px[i]);
+      float64x2_t pyi = vdupq_n_f64(py[i]);
+      float64x2_t pzi = vdupq_n_f64(pz[i]);
+      float64x2_t ri  = vdupq_n_f64(radius[i]);
+
+      for (; k + 1 < buf_size; k += 2) {
+        int j0 = neighbor_buffer[k];
+        int j1 = neighbor_buffer[k+1];
+
+        // Gather from SoA
+        double px_arr[2] = {px[j0], px[j1]};
+        double py_arr[2] = {py[j0], py[j1]};
+        double pz_arr[2] = {pz[j0], pz[j1]};
+        double r_arr[2]  = {radius[j0], radius[j1]};
+
+        float64x2_t pxj = vld1q_f64(px_arr);
+        float64x2_t pyj = vld1q_f64(py_arr);
+        float64x2_t pzj = vld1q_f64(pz_arr);
+        float64x2_t rj  = vld1q_f64(r_arr);
+
+        float64x2_t dx = vsubq_f64(pxi, pxj);
+        float64x2_t dy = vsubq_f64(pyi, pyj);
+        float64x2_t dz = vsubq_f64(pzi, pzj);
+
+        float64x2_t distSq = vmulq_f64(dx, dx);
+        distSq = vfmaq_f64(distSq, dy, dy); // Fused multiply-add
+        distSq = vfmaq_f64(distSq, dz, dz);
+
+        float64x2_t rSum = vaddq_f64(ri, rj);
+        float64x2_t rSumSq = vmulq_f64(rSum, rSum);
+
+        uint64x2_t cmp = vcleq_f64(distSq, rSumSq);
+
+        if (vgetq_lane_u64(cmp, 0)) resolveCollision(i, j0);
+        if (vgetq_lane_u64(cmp, 1)) resolveCollision(i, j1);
+      }
+#endif
+      // Scalar remainder
+      for (; k < buf_size; ++k) {
+        int j = neighbor_buffer[k];
+        if (isCollision(i, j)) {
+          resolveCollision(i, j);
         }
       }
     }

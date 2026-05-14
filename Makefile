@@ -3,7 +3,7 @@ PYBIND_INCLUDE = $(shell $(PYTHON) -m pybind11 --includes)
 PYTHON_INCLUDE = $(shell $(PYTHON)-config --includes)
 PYTHON_SUFFIX  = $(shell $(PYTHON)-config --extension-suffix)
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -fPIC $(PYBIND_INCLUDE) $(PYTHON_INCLUDE)
+CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -fPIC -Iinclude $(PYBIND_INCLUDE) $(PYTHON_INCLUDE)
 LDFLAGS = -shared
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S), Darwin)
@@ -11,7 +11,7 @@ ifeq ($(UNAME_S), Darwin)
 endif
 
 TARGET = _dotarena$(PYTHON_SUFFIX)
-SRC = $(wildcard *.cpp)
+SRC = $(wildcard src/*.cpp)
 OBJ = $(SRC:.cpp=.o)
 
 all: $(TARGET)
