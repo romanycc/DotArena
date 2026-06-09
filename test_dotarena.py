@@ -270,3 +270,64 @@ def test_large_scale_random_parity():
     np.testing.assert_allclose(da_brute.vx, da_grid.vx, rtol=1e-9, atol=1e-9)
     np.testing.assert_allclose(da_brute.vy, da_grid.vy, rtol=1e-9, atol=1e-9)
     np.testing.assert_allclose(da_brute.vz, da_grid.vz, rtol=1e-9, atol=1e-9)
+
+def test_friction_deceleration_decay():
+    """Verify that friction deceleration decays velocity exponentially according to the exact math formula."""
+    friction = 0.25
+    dt = 0.1
+    da = _dotarena.DotArena((1000.0, 1000.0, 1000.0), friction)
+    da.add_circle(1, 10.0, (0.0, 0.0, 0.0), (100.0, 200.0, 300.0))
+    
+    # Mathematical prediction:
+    # frictionFactor = max(0.0, 1.0 - friction * dt) = max(0.0, 1.0 - 0.25 * 0.1) = 0.975
+    # vx_step1 = 100 * 0.975 = 97.5
+    # vy_step1 = 200 * 0.975 = 195.0
+    # vz_step1 = 300 * 0.975 = 292.5
+    da.step(dt, method=2)
+    
+    np.testing.assert_allclose(da.vx[0], 97.5, rtol=1e-10)
+    np.testing.assert_allclose(da.vy[0], 195.0, rtol=1e-10)
+    np.testing.assert_allclose(da.vz[0], 292.5, rtol=1e-10)
+    
+    # Step again
+    # vx_step2 = 97.5 * 0.975 = 95.0625
+    da.step(dt, method=2)
+    np.testing.assert_allclose(da.vx[0], 95.0625, rtol=1e-10)
+
+def test_elasticity_velocity_swap():
+    """Test that two equal-mass particles colliding head-on swap their velocities (characteristic of e=1.0 elastic collision)."""
+    da = _dotarena.DotArena((100.0, 100.0, 100.0), 0.0) # No friction
+    # Particle 1: mass=1000, moving right at 10.0
+    da.add_circle(1, 10.0, (-12.0, 0.0, 0.0), (10.0, 0.0, 0.0))
+    # Particle 2: mass=1000, moving left at -5.0
+    da.add_circle(2, 10.0, (5.0, 0.0, 0.0), (-5.0, 0.0, 0.0))
+    
+    # Step simulation to trigger collision (dt=0.5, movement = 5.0 and -2.5, overlapping occurs)
+    da.step(0.5, method=2)
+    
+    # Elastic collision for equal mass particles in 1D results in swapping velocities:
+    # v1_final should be -5.0, v2_final should be 10.0
+    np.testing.assert_allclose(da.vx[0], -5.0, rtol=1e-10)
+    np.testing.assert_allclose(da.vx[1], 10.0, rtol=1e-10)
+
+def test_newton_first_law_free_motion():
+    """Test that particles in free motion (no collisions/boundaries) travel in a straight line with decayed speed."""
+    friction = 0.1
+    dt = 0.5
+    da = _dotarena.DotArena((1000.0, 1000.0, 1000.0), friction)
+    
+    # Initial position (0,0,0), velocity (10, 20, 30)
+    da.add_circle(1, 5.0, (0.0, 0.0, 0.0), (10.0, 20.0, 30.0))
+    
+    # Step 1:
+    # 1. Decay velocity: v = v * (1 - 0.1 * 0.5) = v * 0.95 => (9.5, 19.0, 28.5)
+    # 2. Update position: p = p_init + v_decayed * dt = (0.0, 0.0, 0.0) + (9.5, 19.0, 28.5) * 0.5 = (4.75, 9.5, 14.25)
+    da.step(dt, method=2)
+    
+    np.testing.assert_allclose(da.vx[0], 9.5, rtol=1e-10)
+    np.testing.assert_allclose(da.vy[0], 19.0, rtol=1e-10)
+    np.testing.assert_allclose(da.vz[0], 28.5, rtol=1e-10)
+    
+    np.testing.assert_allclose(da.px[0], 4.75, rtol=1e-10)
+    np.testing.assert_allclose(da.py[0], 9.5, rtol=1e-10)
+    np.testing.assert_allclose(da.pz[0], 14.25, rtol=1e-10)
