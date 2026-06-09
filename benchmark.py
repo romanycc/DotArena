@@ -63,8 +63,8 @@ def main():
     print("   DotArena Collision Benchmark Tool")
     print("========================================\n")
     
-    frames = 100
-    circle_counts = [500, 1000, 2000, 3000]
+    frames = 20
+    circle_counts = [500, 1000, 2000, 3000, 10000, 100000]
     
     print(f"Running {frames} frames per test...\n")
     print(f"{'Circles':<10} | {'Brute (s)':<12} | {'2D Grid (s)':<12} | {'1D Grid (s)':<12} | {'Speedup (1D vs Brute)'}")

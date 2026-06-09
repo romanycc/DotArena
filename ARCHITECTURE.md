@@ -143,6 +143,9 @@ For a particle $i$ and neighbors $j_0, j_1$:
 
 ## 5. Architectural Modularity Summary
 
-- **`Arena`** ([arena.hpp](file:///Users/cheng/Desktop/OSCAR/DotArena/include/arena.hpp)): Responsible for physical boundary dimensions and global environment parameters (friction coefficient).
-- **`DotArena`** ([dotarena.hpp](file:///Users/cheng/Desktop/OSCAR/DotArena/include/dotarena.hpp)): The central engine that owns particle state arrays (SoA layout), manages spatial hashing broad-phase partitioning, and runs collision narrow-phase solvers.
-- **`Renderer`** ([renderer.hpp](file:///Users/cheng/Desktop/OSCAR/DotArena/include/renderer.hpp)): Responsible for 3D-to-2D projection mapping, depth sorting (painter's algorithm to render spheres back-to-front), lighting calculation, and encoding frame buffers into GIF files.
+- **`Arena`** 
+Responsible for physical boundary dimensions and global environment parameters (friction coefficient).
+- **`DotArena`** 
+The central engine that owns particle state arrays (SoA layout), manages spatial hashing broad-phase partitioning, and runs collision narrow-phase solvers.
+- **`Renderer`** 
+Responsible for 3D-to-2D projection mapping, depth sorting (painter's algorithm to render spheres back-to-front), lighting calculation, and encoding frame buffers into GIF files.
